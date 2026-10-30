@@ -100,18 +100,19 @@ class MediaDownloadService : Service() {
                 .addOption("--extractor-retries", "1")
                 .addOption("--socket-timeout", "12")
             if (image) {
-                if (url.contains("instagram.com/p/", ignoreCase = true)) {
-                    request.addOption("--yes-playlist")
-                } else {
-                    request.addOption("--no-playlist")
-                }
+                if (prefs.getBoolean("playlist", false)) request.addOption("--yes-playlist")
+                else if (url.contains("instagram.com/p/", ignoreCase = true)) request.addOption("--yes-playlist")
+                else request.addOption("--no-playlist")
                 // Instagram photo posts expose full-size image candidates as thumbnails,
                 // not as downloadable video formats. Save one best image per carousel entry.
                 request.addOption("--write-thumbnail")
                 request.addOption("--skip-download")
             } else if (audioOnly) {
                 request.addOption("--no-playlist")
-                request.addOption("-x").addOption("--audio-format", "mp3").addOption("--audio-quality", "0")
+                request.addOption("-x")
+                request.addOption("--audio-format", prefs.getString("audio_format", "mp3") ?: "mp3")
+                request.addOption("--audio-quality", "0")
+                if (prefs.getBoolean("embed_metadata", true)) request.addOption("--add-metadata")
             } else {
                 request.addOption("--no-playlist")
                 val format = if (height > 0) {
@@ -119,11 +120,11 @@ class MediaDownloadService : Service() {
                 } else "bestvideo+bestaudio/best"
                 request.addOption("-f", format)
             }
-            if (subtitles) {
+            if (subtitles || prefs.getBoolean("subtitles", false)) {
                 request.addOption("--write-subs").addOption("--write-auto-subs")
                     .addOption("--sub-langs", "all,-live_chat")
             }
-            if (thumbnail) request.addOption("--write-thumbnail")
+            if (thumbnail || prefs.getBoolean("thumbnail", false)) request.addOption("--write-thumbnail")
             startAsForeground("İndirme başlatılıyor…", 0)
             sendEvent("progress", "İndirme başladı.", 0f)
             YoutubeDL.execute(request, PROCESS_ID, false) { percent, etaSeconds, line ->
@@ -138,6 +139,12 @@ class MediaDownloadService : Service() {
                 ?.sortedBy { it.name }.orEmpty()
             if (downloadedFiles.isEmpty()) throw IllegalStateException("İndirilen dosya bulunamadı.")
             downloadedFiles.forEach { saveToDownloads(it) }
+            val history = getSharedPreferences("cepindir_history", MODE_PRIVATE)
+            val previous = history.getStringSet("items", emptySet()).orEmpty().toMutableSet()
+            downloadedFiles.forEach { file ->
+                previous.add("${System.currentTimeMillis()}|${file.name}")
+            }
+            history.edit().putStringSet("items", previous.takeLast(100).toSet()).apply()
             val summary = if (downloadedFiles.size == 1) {
                 "İndirme tamamlandı: ${downloadedFiles.first().name}"
             } else "İndirme tamamlandı: ${downloadedFiles.size} dosya İndirilenler/CepIndir klasörüne kaydedildi."
