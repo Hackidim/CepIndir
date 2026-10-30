@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,7 +115,8 @@ class MainActivity : ComponentActivity() {
                 onOpenDownloads = ::openDownloads,
                 onHeightChange = { selectedHeight = it },
                 onAudioOnlyChange = { audioOnly = it },
-                onUpdateEngine = ::updateEngine
+                onUpdateEngine = ::updateEngine,
+                onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
             )
         }
     }
@@ -308,7 +310,8 @@ private fun CepIndirScreen(
     onOpenDownloads: () -> Unit,
     onHeightChange: (Int) -> Unit,
     onAudioOnlyChange: (Boolean) -> Unit,
-    onUpdateEngine: () -> Unit
+    onUpdateEngine: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     var link by remember { mutableStateOf(initial) }
     var qualityMenuExpanded by remember { mutableStateOf(false) }
@@ -455,6 +458,11 @@ private fun CepIndirScreen(
                     Icon(Icons.Default.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("İndirmelerimi aç")
+                }
+                OutlinedButton(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Gelişmiş ayarlar")
                 }
                 TextButton(onClick = onUpdateEngine, enabled = !isAnalyzing && !isDownloading) {
                     Icon(Icons.Default.Refresh, contentDescription = null, tint = Muted)
