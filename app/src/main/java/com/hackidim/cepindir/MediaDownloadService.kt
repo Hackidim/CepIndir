@@ -94,16 +94,26 @@ class MediaDownloadService : Service() {
             workDir = File(cacheDir, "cepindir_${UUID.randomUUID()}").apply { mkdirs() }
             val outputTemplate = File(workDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
             val request = YoutubeDLRequest(url)
-                .addOption("--no-mtime").addOption("--no-playlist").addOption("--no-warnings")
+                .addOption("--no-mtime").addOption("--no-warnings")
                 .addOption("--newline").addOption("-o", outputTemplate)
-            if (image && url.contains("instagram.com/p/", ignoreCase = true)) {
-                request.addOption("--yes-playlist")
-            }
+                .addOption("--cache-dir", File(filesDir, "yt-dlp-cache").absolutePath)
+                .addOption("--extractor-retries", "1")
+                .addOption("--socket-timeout", "12")
             if (image) {
-                request.addOption("-f", "best")
+                if (url.contains("instagram.com/p/", ignoreCase = true)) {
+                    request.addOption("--yes-playlist")
+                } else {
+                    request.addOption("--no-playlist")
+                }
+                // Instagram photo posts expose full-size image candidates as thumbnails,
+                // not as downloadable video formats. Save one best image per carousel entry.
+                request.addOption("--write-thumbnail")
+                request.addOption("--skip-download")
             } else if (audioOnly) {
+                request.addOption("--no-playlist")
                 request.addOption("-x").addOption("--audio-format", "mp3").addOption("--audio-quality", "0")
             } else {
+                request.addOption("--no-playlist")
                 val format = if (height > 0) {
                     "bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best"
                 } else "bestvideo+bestaudio/best"
