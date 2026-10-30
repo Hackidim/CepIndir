@@ -25,3 +25,7 @@ GitHub Actions builds a debug APK on pushes to main. The workflow artifact is na
 
 ## Share-sheet mode (v1.2.0)
 Choose **Share → Cepİndir** from a supported app. Cepİndir opens a compact bottom panel rather than its main screen. Choose **Hızlı indir** for best-quality video or open **İndirmeyi ayarla** to choose video/MP3, resolution, subtitles and thumbnail. The share panel closes as soon as the foreground download service starts; progress and stop controls remain in the Android notification.
+
+
+## Advanced settings (v1.3.0)
+The advanced settings screen persists audio format (MP3/M4A/OPUS), subtitle and thumbnail preferences, playlist mode, metadata embedding, retry count and network timeout. These settings are applied by the background downloader. Open **Gelişmiş ayarlar** from the home screen.
