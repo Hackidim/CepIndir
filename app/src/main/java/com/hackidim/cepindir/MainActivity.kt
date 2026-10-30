@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
     private var selectedHeight by mutableIntStateOf(0)
     private var analysisReady by mutableStateOf(false)
     private var audioOnly by mutableStateOf(false)
+    private var imagePost by mutableStateOf(false)
     private var receiverRegistered = false
 
     private val downloadReceiver = object : BroadcastReceiver() {
@@ -104,6 +105,7 @@ class MainActivity : ComponentActivity() {
                 resolutions = resolutions,
                 selectedHeight = selectedHeight,
                 audioOnly = audioOnly,
+                imagePost = imagePost,
                 analysisReady = analysisReady,
                 onAnalyze = ::analyzeLink,
                 onDownload = ::beginDownload,
@@ -174,6 +176,8 @@ class MainActivity : ComponentActivity() {
         mediaTitle = ""
         platformName = ""
         resolutions = emptyList()
+        imagePost = false
+        audioOnly = false
         status = "Bağlantı analiz ediliyor…"
         lifecycleScope.launch {
             try {
@@ -187,6 +191,9 @@ class MainActivity : ComponentActivity() {
                 }
                 mediaTitle = info.title?.takeIf { it.isNotBlank() } ?: "Başlık alınamadı"
                 platformName = info.extractorKey ?: info.extractor ?: "Medya kaynağı"
+                imagePost = info.ext?.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "avif") ||
+                    (info.formats.orEmpty().isNotEmpty() && info.formats.orEmpty().all { it.vcodec.isNullOrBlank() || it.vcodec == "none" } &&
+                        info.thumbnails.orEmpty().isNotEmpty())
                 resolutions = info.formats.orEmpty()
                     .filter { !it.vcodec.isNullOrBlank() && it.vcodec != "none" && it.height > 0 }
                     .map { it.height }.distinct().sortedDescending()
@@ -224,6 +231,7 @@ class MainActivity : ComponentActivity() {
             putExtra(MediaDownloadService.EXTRA_URL, url)
             putExtra(MediaDownloadService.EXTRA_HEIGHT, selectedHeight)
             putExtra(MediaDownloadService.EXTRA_AUDIO_ONLY, audioOnly)
+            putExtra(MediaDownloadService.EXTRA_IMAGE, imagePost)
         }
         try {
             ContextCompat.startForegroundService(this, serviceIntent)
@@ -284,6 +292,7 @@ private fun CepIndirScreen(
     resolutions: List<Int>,
     selectedHeight: Int,
     audioOnly: Boolean,
+    imagePost: Boolean,
     analysisReady: Boolean,
     onAnalyze: (String) -> Unit,
     onDownload: (String) -> Unit,
@@ -374,13 +383,15 @@ private fun CepIndirScreen(
                             Spacer(Modifier.height(16.dp))
                             Text("İndirme türü", fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(7.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilterChip(selected = !audioOnly, onClick = { onAudioOnlyChange(false) },
-                                    label = { Text("Video") })
-                                FilterChip(selected = audioOnly, onClick = { onAudioOnlyChange(true) },
-                                    label = { Text("MP3 ses") })
+                            if (imagePost) {
+                                Text("Fotoğraf gönderisi algılandı. Görsel(ler) orijinal dosya olarak indirilecek.", color = Gold, fontSize = 12.sp)
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(selected = !audioOnly, onClick = { onAudioOnlyChange(false) }, label = { Text("Video") })
+                                    FilterChip(selected = audioOnly, onClick = { onAudioOnlyChange(true) }, label = { Text("MP3 ses") })
+                                }
                             }
-                            if (!audioOnly) {
+                            if (!audioOnly && !imagePost) {
                                 Spacer(Modifier.height(12.dp))
                                 Text("Video kalitesi", fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(7.dp))
@@ -407,7 +418,7 @@ private fun CepIndirScreen(
                                 shape = RoundedCornerShape(16.dp), enabled = !isDownloading && !isAnalyzing) {
                                 Icon(Icons.Default.Download, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("İndirmeyi başlat", fontWeight = FontWeight.Bold)
+                                Text(if (imagePost) "Fotoğraf(ları) indir" else "İndirmeyi başlat", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
