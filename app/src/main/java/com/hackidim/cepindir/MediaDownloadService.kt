@@ -92,6 +92,7 @@ class MediaDownloadService : Service() {
             YoutubeDL.init(applicationContext)
             FFmpeg.init(applicationContext)
             workDir = File(cacheDir, "cepindir_${UUID.randomUUID()}").apply { mkdirs() }
+            val prefs = getSharedPreferences("cepindir_settings", MODE_PRIVATE)
             val outputTemplate = File(workDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
             val request = YoutubeDLRequest(url)
                 .addOption("--no-mtime").addOption("--no-warnings")
@@ -144,7 +145,7 @@ class MediaDownloadService : Service() {
             downloadedFiles.forEach { file ->
                 previous.add("${System.currentTimeMillis()}|${file.name}")
             }
-            history.edit().putStringSet("items", previous.takeLast(100).toSet()).apply()
+            history.edit().putStringSet("items", previous.toList().takeLast(100).toSet()).apply()
             val summary = if (downloadedFiles.size == 1) {
                 "İndirme tamamlandı: ${downloadedFiles.first().name}"
             } else "İndirme tamamlandı: ${downloadedFiles.size} dosya İndirilenler/CepIndir klasörüne kaydedildi."
