@@ -19,6 +19,7 @@ private val SettingsBg = androidx.compose.ui.graphics.Color(0xFF090912)
 private val SettingsPanel = androidx.compose.ui.graphics.Color(0xFF171525)
 private val SettingsPurple = androidx.compose.ui.graphics.Color(0xFF9B72FF)
 
+@OptIn(ExperimentalMaterial3Api::class)
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +33,8 @@ class SettingsActivity : ComponentActivity() {
             var retries by remember { mutableIntStateOf(prefs.getInt("retries", 2)) }
             var timeout by remember { mutableIntStateOf(prefs.getInt("timeout", 20)) }
             var formatMenu by remember { mutableStateOf(false) }
+            var showHistory by remember { mutableStateOf(false) }
+            val historyItems = getSharedPreferences("cepindir_history", MODE_PRIVATE).getStringSet("items", emptySet()).orEmpty().sortedDescending()
             MaterialTheme(colorScheme = darkColorScheme(primary = SettingsPurple, background = SettingsBg, surface = SettingsPanel)) {
                 Scaffold(
                     topBar = {
@@ -84,6 +87,29 @@ class SettingsActivity : ComponentActivity() {
                                 Text("Bu tercihler arka plandaki indirme servisine uygulanır. Ağ zaman aşımı ve yeniden deneme değerleri bağlantı sorunlarında kullanılır.",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
+                        }
+                        OutlinedButton(onClick = { showHistory = true }, modifier = Modifier.fillMaxWidth()) { Text("İndirme geçmişini görüntüle") }
+                        if (showHistory) {
+                            AlertDialog(
+                                onDismissRequest = { showHistory = false },
+                                title = { Text("Son indirilenler") },
+                                text = {
+                                    Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                                        if (historyItems.isEmpty()) Text("Henüz tamamlanmış indirme yok.")
+                                        historyItems.forEach { entry ->
+                                            Text(entry.substringAfter("|"), modifier = Modifier.padding(vertical = 6.dp))
+                                            HorizontalDivider()
+                                        }
+                                    }
+                                },
+                                confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Kapat") } },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        getSharedPreferences("cepindir_history", MODE_PRIVATE).edit().clear().apply()
+                                        showHistory = false
+                                    }) { Text("Geçmişi temizle") }
+                                }
+                            )
                         }
                         Button(onClick = { finish() }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Tamam") }
                     }
