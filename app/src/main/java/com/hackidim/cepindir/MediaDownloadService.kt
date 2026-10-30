@@ -1,3 +1,8 @@
+/*
+ * Cepİndir background media download service.
+ * Modified 30 October 2026.
+ * Distributed under GPL-3.0-only; see LICENSE.
+ */
 package com.hackidim.cepindir
 
 import android.app.NotificationChannel
