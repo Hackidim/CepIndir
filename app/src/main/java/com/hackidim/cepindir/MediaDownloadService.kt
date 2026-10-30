@@ -182,7 +182,7 @@ class MediaDownloadService : Service() {
 
     private fun startAsForeground(message: String, progress: Int) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle("Cepİndir")
+            .setSmallIcon(R.drawable.ic_notification_download).setContentTitle("Cepİndir")
             .setContentText(message).setOnlyAlertOnce(true).setOngoing(true)
             .setProgress(100, progress, progress == 0).setPriority(NotificationCompat.PRIORITY_LOW)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Durdur",
@@ -198,7 +198,7 @@ class MediaDownloadService : Service() {
     private fun updateProgressNotification(message: String, progress: Float, eta: Long) {
         val etaText = if (eta > 0) " • yaklaşık ${eta}s kaldı" else ""
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ic_notification_download)
             .setContentTitle("Cepİndir • %${progress.toInt()}").setContentText(message + etaText)
             .setOnlyAlertOnce(true).setOngoing(true).setProgress(100, progress.toInt(), false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -212,7 +212,7 @@ class MediaDownloadService : Service() {
 
     private fun postFinishedNotification(message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done).setContentTitle("Cepİndir")
+            .setSmallIcon(R.drawable.ic_notification_download).setContentTitle("Cepİndir")
             .setContentText(message).setAutoCancel(true).setOngoing(false).setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
         notificationManager.notify(NOTIFICATION_ID, notification)
