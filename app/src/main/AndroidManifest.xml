@@ -7,25 +7,32 @@
     <application
         android:allowBackup="true"
         android:extractNativeLibs="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="Cepİndir"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@android:style/Theme.Material.NoActionBar">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".ShareDownloadActivity"
+            android:exported="true"
+            android:label="Cepİndir"
+            android:icon="@mipmap/ic_launcher"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.CepIndir.Share">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
-        <service
-            android:name=".MediaDownloadService"
-            android:exported="false"
+        <service android:name=".MediaDownloadService" android:exported="false"
             android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

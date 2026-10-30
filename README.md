@@ -21,3 +21,7 @@ This project integrates the GPL-3.0-licensed youtubedl-android wrapper and FFmpe
 
 ## Build
 GitHub Actions builds a debug APK on pushes to main. The workflow artifact is named CepIndir-debug-apk.
+
+
+## Share-sheet mode (v1.2.0)
+Choose **Share → Cepİndir** from a supported app. Cepİndir opens a compact bottom panel rather than its main screen. Choose **Hızlı indir** for best-quality video or open **İndirmeyi ayarla** to choose video/MP3, resolution, subtitles and thumbnail. The share panel closes as soon as the foreground download service starts; progress and stop controls remain in the Android notification.

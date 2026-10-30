@@ -35,6 +35,8 @@ class MediaDownloadService : Service() {
         const val EXTRA_URL = "url"
         const val EXTRA_HEIGHT = "height"
         const val EXTRA_AUDIO_ONLY = "audio_only"
+        const val EXTRA_SUBTITLES = "subtitles"
+        const val EXTRA_THUMBNAIL = "thumbnail"
         const val EXTRA_TYPE = "type"
         const val EXTRA_PROGRESS = "progress"
         const val EXTRA_MESSAGE = "message"
@@ -72,14 +74,17 @@ class MediaDownloadService : Service() {
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
                 val height = intent.getIntExtra(EXTRA_HEIGHT, 0)
                 val audioOnly = intent.getBooleanExtra(EXTRA_AUDIO_ONLY, false)
+                val subtitles = intent.getBooleanExtra(EXTRA_SUBTITLES, false)
+                val thumbnail = intent.getBooleanExtra(EXTRA_THUMBNAIL, false)
                 startAsForeground("Bağlantı hazırlanıyor…", 0)
-                executor.execute { performDownload(url, height, audioOnly, startId) }
+                executor.execute { performDownload(url, height, audioOnly, subtitles, thumbnail, startId) }
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun performDownload(url: String, height: Int, audioOnly: Boolean, startId: Int) {
+    private fun performDownload(url: String, height: Int, audioOnly: Boolean, subtitles: Boolean,
+        thumbnail: Boolean, startId: Int) {
         var workDir: File? = null
         try {
             YoutubeDL.init(applicationContext)
@@ -87,25 +92,21 @@ class MediaDownloadService : Service() {
             workDir = File(cacheDir, "cepindir_${UUID.randomUUID()}").apply { mkdirs() }
             val outputTemplate = File(workDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
             val request = YoutubeDLRequest(url)
-                .addOption("--no-mtime")
-                .addOption("--no-playlist")
-                .addOption("--no-warnings")
-                .addOption("--newline")
-                .addOption("-o", outputTemplate)
-
+                .addOption("--no-mtime").addOption("--no-playlist").addOption("--no-warnings")
+                .addOption("--newline").addOption("-o", outputTemplate)
             if (audioOnly) {
-                request.addOption("-x")
-                    .addOption("--audio-format", "mp3")
-                    .addOption("--audio-quality", "0")
+                request.addOption("-x").addOption("--audio-format", "mp3").addOption("--audio-quality", "0")
             } else {
                 val format = if (height > 0) {
                     "bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best"
-                } else {
-                    "bestvideo+bestaudio/best"
-                }
+                } else "bestvideo+bestaudio/best"
                 request.addOption("-f", format)
             }
-
+            if (subtitles) {
+                request.addOption("--write-subs").addOption("--write-auto-subs")
+                    .addOption("--sub-langs", "all,-live_chat")
+            }
+            if (thumbnail) request.addOption("--write-thumbnail")
             startAsForeground("İndirme başlatılıyor…", 0)
             sendEvent("progress", "İndirme başladı.", 0f)
             YoutubeDL.execute(request, PROCESS_ID, false) { percent, etaSeconds, line ->
@@ -114,16 +115,17 @@ class MediaDownloadService : Service() {
                 updateProgressNotification(readable, safePercent, etaSeconds)
                 sendEvent("progress", readable, safePercent)
             }
-
-            val downloadedFile = workDir.listFiles()
-                ?.filter { it.isFile && !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") && !it.name.startsWith(".") }
-                ?.maxByOrNull { it.lastModified() }
-                ?: throw IllegalStateException("İndirilen dosya bulunamadı.")
-
-            saveToDownloads(downloadedFile)
-            val completedName = downloadedFile.name
-            postFinishedNotification("İndirme tamamlandı: $completedName")
-            sendEvent("complete", "İndirme tamamlandı. Dosya İndirilenler/CepIndir klasörüne kaydedildi.", 100f)
+            val downloadedFiles = workDir.listFiles()
+                ?.filter { it.isFile && !it.name.endsWith(".part") &&
+                    !it.name.endsWith(".ytdl") && !it.name.startsWith(".") }
+                ?.sortedBy { it.name }.orEmpty()
+            if (downloadedFiles.isEmpty()) throw IllegalStateException("İndirilen dosya bulunamadı.")
+            downloadedFiles.forEach { saveToDownloads(it) }
+            val summary = if (downloadedFiles.size == 1) {
+                "İndirme tamamlandı: ${downloadedFiles.first().name}"
+            } else "İndirme tamamlandı: ${downloadedFiles.size} dosya İndirilenler/CepIndir klasörüne kaydedildi."
+            postFinishedNotification(summary)
+            sendEvent("complete", "İndirme tamamlandı. Dosyalar İndirilenler/CepIndir klasörüne kaydedildi.", 100f)
         } catch (e: Exception) {
             val error = e.message?.lineSequence()?.firstOrNull()?.take(180) ?: "İndirme başarısız oldu."
             postFinishedNotification("İndirme tamamlanamadı: $error")
@@ -159,7 +161,6 @@ class MediaDownloadService : Service() {
                 throw e
             }
         }
-
         val targetDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
             ?: throw IllegalStateException("İndirme klasörü oluşturulamadı.")
         if (!targetDir.exists()) targetDir.mkdirs()
@@ -170,9 +171,8 @@ class MediaDownloadService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Cepİndir indirmeleri", NotificationManager.IMPORTANCE_LOW
-            ).apply {
+            val channel = NotificationChannel(CHANNEL_ID, "Cepİndir indirmeleri",
+                NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Devam eden medya indirmelerinin durumu"
                 setShowBadge(false)
             }
@@ -182,77 +182,49 @@ class MediaDownloadService : Service() {
 
     private fun startAsForeground(message: String, progress: Int) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Cepİndir")
-            .setContentText(message)
-            .setOnlyAlertOnce(true)
-            .setOngoing(true)
-            .setProgress(100, progress, progress == 0)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Durdur",
-                PendingIntent.getService(
-                    this, 1, Intent(this, MediaDownloadService::class.java).setAction(ACTION_STOP),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
+            .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle("Cepİndir")
+            .setContentText(message).setOnlyAlertOnce(true).setOngoing(true)
+            .setProgress(100, progress, progress == 0).setPriority(NotificationCompat.PRIORITY_LOW)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Durdur",
+                PendingIntent.getService(this, 1,
+                    Intent(this, MediaDownloadService::class.java).setAction(ACTION_STOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        } else startForeground(NOTIFICATION_ID, notification)
     }
 
     private fun updateProgressNotification(message: String, progress: Float, eta: Long) {
         val etaText = if (eta > 0) " • yaklaşık ${eta}s kaldı" else ""
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Cepİndir • %${progress.toInt()}")
-            .setContentText(message + etaText)
-            .setOnlyAlertOnce(true)
-            .setOngoing(true)
-            .setProgress(100, progress.toInt(), false)
+            .setContentTitle("Cepİndir • %${progress.toInt()}").setContentText(message + etaText)
+            .setOnlyAlertOnce(true).setOngoing(true).setProgress(100, progress.toInt(), false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Durdur",
-                PendingIntent.getService(
-                    this, 1, Intent(this, MediaDownloadService::class.java).setAction(ACTION_STOP),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Durdur",
+                PendingIntent.getService(this, 1,
+                    Intent(this, MediaDownloadService::class.java).setAction(ACTION_STOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             .build()
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun postFinishedNotification(message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("Cepİndir")
-            .setContentText(message)
-            .setAutoCancel(true)
-            .setOngoing(false)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+            .setSmallIcon(android.R.drawable.stat_sys_download_done).setContentTitle("Cepİndir")
+            .setContentText(message).setAutoCancel(true).setOngoing(false).setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun sendEvent(type: String, message: String, progress: Float) {
         val event = Intent(ACTION_EVENT).setPackage(packageName).apply {
-            putExtra(EXTRA_TYPE, type)
-            putExtra(EXTRA_MESSAGE, message)
-            putExtra(EXTRA_PROGRESS, progress)
+            putExtra(EXTRA_TYPE, type); putExtra(EXTRA_MESSAGE, message); putExtra(EXTRA_PROGRESS, progress)
         }
         sendBroadcast(event)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onDestroy() {
-        executor.shutdownNow()
-        super.onDestroy()
-    }
+    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
 }
