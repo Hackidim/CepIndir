@@ -18,6 +18,7 @@ import android.os.Environment
 import android.os.IBinder
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import java.io.File
@@ -82,6 +83,7 @@ class MediaDownloadService : Service() {
         var workDir: File? = null
         try {
             YoutubeDL.init(applicationContext)
+            FFmpeg.init(applicationContext)
             workDir = File(cacheDir, "cepindir_${UUID.randomUUID()}").apply { mkdirs() }
             val outputTemplate = File(workDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
             val request = YoutubeDLRequest(url)
