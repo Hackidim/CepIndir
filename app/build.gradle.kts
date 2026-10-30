@@ -10,8 +10,21 @@ android {
         applicationId = "com.hackidim.cepindir"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.2"
+    }
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("cepindir-debug.keystore")
+            storePassword = "cepindir-debug-store"
+            keyAlias = "cepindir"
+            keyPassword = "cepindir-debug-key"
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
     buildFeatures { compose = true }
     compileOptions {
