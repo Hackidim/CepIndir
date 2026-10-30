@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
@@ -178,6 +179,7 @@ class MainActivity : ComponentActivity() {
             try {
                 val info = withContext(Dispatchers.IO) {
                     YoutubeDL.init(applicationContext)
+                    FFmpeg.init(applicationContext)
                     val request = YoutubeDLRequest(url)
                     request.addOption("--no-playlist")
                     request.addOption("--no-warnings")
