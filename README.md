@@ -17,7 +17,7 @@ yt-dlp includes extractors for a large number of sites, including YouTube, Insta
 Use the app only for media you own, have permission to download, or are otherwise legally entitled to save. Follow the applicable platform terms and copyright law.
 
 ## Open-source notices
-This project integrates the GPL-3.0-licensed youtubedl-android wrapper and FFmpeg Android package published by the youtubedl-android project. The source for Cepİndir in this repository is licensed under GPL-3.0-or-later; the complete license text is in LICENSE. yt-dlp and FFmpeg retain their respective upstream notices and licenses. See THIRD_PARTY_NOTICES.md.
+This project integrates the GPL-3.0-licensed youtubedl-android wrapper and FFmpeg Android package published by the youtubedl-android project. The source for Cepİndir in this repository is licensed under GPL-3.0-only; the complete license text is in LICENSE. yt-dlp and FFmpeg retain their respective upstream notices and licenses. See THIRD_PARTY_NOTICES.md.
 
 ## Build
 GitHub Actions builds a debug APK on pushes to main. The workflow artifact is named CepIndir-debug-apk.
