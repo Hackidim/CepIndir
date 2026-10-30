@@ -1,3 +1,8 @@
+/*
+ * Cepİndir Android media downloader.
+ * Modified 30 October 2026.
+ * Distributed under GPL-3.0-only; see LICENSE.
+ */
 package com.hackidim.cepindir
 
 import android.Manifest
@@ -288,6 +293,7 @@ private fun CepIndirScreen(
 ) {
     var link by remember { mutableStateOf(initial) }
     var qualityMenuExpanded by remember { mutableStateOf(false) }
+    var showLegalInfo by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial.isNotBlank()) link = initial }
 
     MaterialTheme(colorScheme = darkColorScheme(
@@ -439,6 +445,26 @@ private fun CepIndirScreen(
                     "Yalnızca erişebildiğin ve indirme hakkına sahip olduğun içerikleri indir. Özel hesaplar, giriş gerektiren içerikler ve DRM koruması desteklenmez. Platform değişiklikleri nedeniyle bazı bağlantılar geçici olarak çalışmayabilir.",
                     color = Muted, fontSize = 11.sp
                 )
+                TextButton(onClick = { showLegalInfo = true }) {
+                    Text("Hakkında ve açık kaynak lisansları", color = Muted)
+                }
+                if (showLegalInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showLegalInfo = false },
+                        title = { Text("Cepİndir • Açık kaynak") },
+                        text = {
+                            Text(
+                                "Cepİndir'in kaynak kodu GPL-3.0 lisansı koşullarıyla yayımlanır. " +
+                                "Kaynak kod: github.com/Hackidim/CepIndir. " +
+                                "Üçüncü taraf bileşenler ve lisansları THIRD_PARTY_NOTICES.md dosyasında açıklanır. " +
+                                "Bu yazılım, yasaların izin verdiği ölçüde, hiçbir açık veya zımni garanti olmaksızın olduğu gibi sunulur."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showLegalInfo = false }) { Text("Kapat") }
+                        }
+                    )
+                }
                 Spacer(Modifier.height(18.dp))
             }
         }
