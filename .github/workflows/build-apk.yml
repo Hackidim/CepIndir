@@ -13,7 +13,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Restore persistent Android debug signing key
+      - name: Restore stable Android debug key
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
