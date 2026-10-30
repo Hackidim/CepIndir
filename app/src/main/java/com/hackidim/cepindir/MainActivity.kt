@@ -187,13 +187,20 @@ class MainActivity : ComponentActivity() {
                     val request = YoutubeDLRequest(url)
                     request.addOption("--no-playlist")
                     request.addOption("--no-warnings")
+                    request.addOption("--cache-dir", File(cacheDir, "yt-dlp-cache").absolutePath)
+                    request.addOption("--extractor-retries", "1")
+                    request.addOption("--socket-timeout", "12")
                     YoutubeDL.getInfo(request)
                 }
                 mediaTitle = info.title?.takeIf { it.isNotBlank() } ?: "Başlık alınamadı"
                 platformName = info.extractorKey ?: info.extractor ?: "Medya kaynağı"
+                val availableFormats = info.formats.orEmpty()
+                val hasVideoStream = availableFormats.any {
+                    !it.vcodec.isNullOrBlank() && it.vcodec != "none"
+                }
+                val hasImageCandidates = info.thumbnails.orEmpty().isNotEmpty()
                 imagePost = info.ext?.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "avif") ||
-                    (info.formats.orEmpty().isNotEmpty() && info.formats.orEmpty().all { it.vcodec.isNullOrBlank() || it.vcodec == "none" } &&
-                        info.thumbnails.orEmpty().isNotEmpty())
+                    (!hasVideoStream && hasImageCandidates)
                 resolutions = info.formats.orEmpty()
                     .filter { !it.vcodec.isNullOrBlank() && it.vcodec != "none" && it.height > 0 }
                     .map { it.height }.distinct().sortedDescending()
