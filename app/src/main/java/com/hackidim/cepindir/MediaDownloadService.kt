@@ -37,6 +37,7 @@ class MediaDownloadService : Service() {
         const val EXTRA_AUDIO_ONLY = "audio_only"
         const val EXTRA_SUBTITLES = "subtitles"
         const val EXTRA_THUMBNAIL = "thumbnail"
+        const val EXTRA_IMAGE = "image"
         const val EXTRA_TYPE = "type"
         const val EXTRA_PROGRESS = "progress"
         const val EXTRA_MESSAGE = "message"
@@ -76,15 +77,16 @@ class MediaDownloadService : Service() {
                 val audioOnly = intent.getBooleanExtra(EXTRA_AUDIO_ONLY, false)
                 val subtitles = intent.getBooleanExtra(EXTRA_SUBTITLES, false)
                 val thumbnail = intent.getBooleanExtra(EXTRA_THUMBNAIL, false)
+                val image = intent.getBooleanExtra(EXTRA_IMAGE, false)
                 startAsForeground("Bağlantı hazırlanıyor…", 0)
-                executor.execute { performDownload(url, height, audioOnly, subtitles, thumbnail, startId) }
+                executor.execute { performDownload(url, height, audioOnly, subtitles, thumbnail, image, startId) }
             }
         }
         return START_NOT_STICKY
     }
 
     private fun performDownload(url: String, height: Int, audioOnly: Boolean, subtitles: Boolean,
-        thumbnail: Boolean, startId: Int) {
+        thumbnail: Boolean, image: Boolean, startId: Int) {
         var workDir: File? = null
         try {
             YoutubeDL.init(applicationContext)
@@ -94,7 +96,12 @@ class MediaDownloadService : Service() {
             val request = YoutubeDLRequest(url)
                 .addOption("--no-mtime").addOption("--no-playlist").addOption("--no-warnings")
                 .addOption("--newline").addOption("-o", outputTemplate)
-            if (audioOnly) {
+            if (image && url.contains("instagram.com/p/", ignoreCase = true)) {
+                request.addOption("--yes-playlist")
+            }
+            if (image) {
+                request.addOption("-f", "best")
+            } else if (audioOnly) {
                 request.addOption("-x").addOption("--audio-format", "mp3").addOption("--audio-quality", "0")
             } else {
                 val format = if (height > 0) {
