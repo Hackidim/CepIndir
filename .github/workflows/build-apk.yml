@@ -13,6 +13,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Restore stable debug signing key
+        run: |
+          echo "${{ secrets.CEPINDIR_DEBUG_KEYSTORE_BASE64 }}" | base64 --decode > app/cepindir-debug.keystore
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
