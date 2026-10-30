@@ -13,19 +13,6 @@ android {
         versionCode = 3
         versionName = "1.0.3"
     }
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file("cepindir-debug.keystore")
-            storePassword = "cepindir-debug-store"
-            keyAlias = "cepindir"
-            keyPassword = "cepindir-debug-key"
-        }
-    }
-    buildTypes {
-        getByName("debug") {
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
