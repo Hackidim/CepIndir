@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
     private var platformName by mutableStateOf("")
     private var resolutions by mutableStateOf(emptyList<Int>())
     private var selectedHeight by mutableIntStateOf(0)
+    private var selectedFps by mutableIntStateOf(0)
     private var analysisReady by mutableStateOf(false)
     private var audioOnly by mutableStateOf(false)
     private var imagePost by mutableStateOf(false)
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
                 platformName = platformName,
                 resolutions = resolutions,
                 selectedHeight = selectedHeight,
+                selectedFps = selectedFps,
                 audioOnly = audioOnly,
                 imagePost = imagePost,
                 analysisReady = analysisReady,
@@ -113,7 +115,7 @@ class MainActivity : ComponentActivity() {
                 onDownload = ::beginDownload,
                 onPaste = ::pasteFromClipboard,
                 onOpenDownloads = ::openDownloads,
-                onHeightChange = { selectedHeight = it },
+                onHeightChange = { height, fps -> selectedHeight = height; selectedFps = fps },
                 onAudioOnlyChange = { audioOnly = it },
                 onUpdateEngine = ::updateEngine,
                 onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
@@ -287,6 +289,7 @@ class MainActivity : ComponentActivity() {
             action = MediaDownloadService.ACTION_DOWNLOAD
             putExtra(MediaDownloadService.EXTRA_URL, url)
             putExtra(MediaDownloadService.EXTRA_HEIGHT, selectedHeight)
+            putExtra(MediaDownloadService.EXTRA_FPS, selectedFps)
             putExtra(MediaDownloadService.EXTRA_AUDIO_ONLY, audioOnly)
             putExtra(MediaDownloadService.EXTRA_IMAGE, imagePost)
         }
@@ -348,6 +351,7 @@ private fun CepIndirScreen(
     platformName: String,
     resolutions: List<Int>,
     selectedHeight: Int,
+    selectedFps: Int,
     audioOnly: Boolean,
     imagePost: Boolean,
     analysisReady: Boolean,
@@ -355,7 +359,7 @@ private fun CepIndirScreen(
     onDownload: (String) -> Unit,
     onPaste: () -> String,
     onOpenDownloads: () -> Unit,
-    onHeightChange: (Int) -> Unit,
+    onHeightChange: (Int, Int) -> Unit,
     onAudioOnlyChange: (Boolean) -> Unit,
     onUpdateEngine: () -> Unit,
     onOpenSettings: () -> Unit
