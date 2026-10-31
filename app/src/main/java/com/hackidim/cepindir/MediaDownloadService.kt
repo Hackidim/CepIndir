@@ -143,7 +143,7 @@ class MediaDownloadService : Service() {
                         request.addOption("--no-playlist")
                         val fpsFilter = if (fps > 0) "[fps<=${fps}]" else ""
                         val format = if (height > 0) {
-                            "bestvideo[height<=${height}]\${fpsFilter}+bestaudio/best[height<=${height}]\${fpsFilter}/best"
+                            "bestvideo[height<=${height}]${fpsFilter}+bestaudio/best[height<=${height}]${fpsFilter}/best"
                         } else "bestvideo+bestaudio/best"
                         request.addOption("-f", format)
                     }
