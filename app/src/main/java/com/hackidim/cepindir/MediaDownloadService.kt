@@ -89,72 +89,105 @@ class MediaDownloadService : Service() {
         thumbnail: Boolean, image: Boolean, startId: Int) {
         var workDir: File? = null
         try {
-            YoutubeDL.init(applicationContext)
-            FFmpeg.init(applicationContext)
-            workDir = File(cacheDir, "cepindir_${UUID.randomUUID()}").apply { mkdirs() }
+            val tempDir = File(cacheDir, "cepindir_" + UUID.randomUUID()).apply { mkdirs() }
+            workDir = tempDir
             val prefs = getSharedPreferences("cepindir_settings", MODE_PRIVATE)
-            val outputTemplate = File(workDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
-            val request = YoutubeDLRequest(url)
-                .addOption("--no-mtime").addOption("--no-warnings")
-                .addOption("--newline").addOption("-o", outputTemplate)
-                .addOption("--cache-dir", File(filesDir, "yt-dlp-cache").absolutePath)
-                .addOption("--extractor-retries", "1")
-                .addOption("--socket-timeout", "12")
-            if (image) {
-                if (prefs.getBoolean("playlist", false)) request.addOption("--yes-playlist")
-                else if (url.contains("instagram.com/p/", ignoreCase = true)) request.addOption("--yes-playlist")
-                else request.addOption("--no-playlist")
-                // Instagram photo posts expose full-size image candidates as thumbnails,
-                // not as downloadable video formats. Save one best image per carousel entry.
-                request.addOption("--write-thumbnail")
-                request.addOption("--skip-download")
-            } else if (audioOnly) {
-                request.addOption("--no-playlist")
-                request.addOption("-x")
-                request.addOption("--audio-format", prefs.getString("audio_format", "mp3") ?: "mp3")
-                request.addOption("--audio-quality", "0")
-                if (prefs.getBoolean("embed_metadata", true)) request.addOption("--add-metadata")
-            } else {
-                request.addOption("--no-playlist")
-                val format = if (height > 0) {
-                    "bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best"
-                } else "bestvideo+bestaudio/best"
-                request.addOption("-f", format)
-            }
-            if (subtitles || prefs.getBoolean("subtitles", false)) {
-                request.addOption("--write-subs").addOption("--write-auto-subs")
-                    .addOption("--sub-langs", "all,-live_chat")
-            }
-            if (thumbnail || prefs.getBoolean("thumbnail", false)) request.addOption("--write-thumbnail")
+            val instagramPhotoPost = image && InstagramPhotoDownloader.isPostUrl(url)
+            val directImage = image && DirectImageDownloader.isDirectImageUrl(url)
+
             startAsForeground("İndirme başlatılıyor…", 0)
             sendEvent("progress", "İndirme başladı.", 0f)
-            YoutubeDL.execute(request, PROCESS_ID, false) { percent, etaSeconds, line ->
-                val safePercent = percent.coerceIn(0f, 100f)
-                val readable = line.take(180).ifBlank { "İndiriliyor…" }
-                updateProgressNotification(readable, safePercent, etaSeconds)
-                sendEvent("progress", readable, safePercent)
+
+            when {
+                instagramPhotoPost -> {
+                    InstagramPhotoDownloader.download(url, tempDir) { current, total ->
+                        val percent = current * 100f / total.coerceAtLeast(1)
+                        val message = "Instagram fotoğrafı indiriliyor ($current/$total)…"
+                        updateProgressNotification(message, percent, 0)
+                        sendEvent("progress", message, percent)
+                    }
+                }
+                directImage -> {
+                    sendEvent("progress", "Görsel dosyası indiriliyor…", 10f)
+                    DirectImageDownloader.download(url, tempDir)
+                    sendEvent("progress", "Görsel kaydedilmeye hazırlanıyor…", 90f)
+                }
+                else -> {
+                    YoutubeDL.init(applicationContext)
+                    FFmpeg.init(applicationContext)
+                    val outputTemplate = File(tempDir, "%(title).120B [%(id)s].%(ext)s").absolutePath
+                    val request = YoutubeDLRequest(url)
+                        .addOption("--no-mtime").addOption("--no-warnings")
+                        .addOption("--newline").addOption("-o", outputTemplate)
+                        .addOption("--cache-dir", File(filesDir, "yt-dlp-cache").absolutePath)
+                        .addOption("--extractor-retries", "2")
+                        .addOption("--socket-timeout", "20")
+                        .addOption("--retries", "3")
+
+                    if (image) {
+                        if (prefs.getBoolean("playlist", false)) request.addOption("--yes-playlist")
+                        else request.addOption("--no-playlist")
+                        // Video-platform thumbnail downloads remain on yt-dlp.
+                        // Instagram post photos use the dedicated extractor above.
+                        request.addOption("--write-thumbnail")
+                        request.addOption("--skip-download")
+                    } else if (audioOnly) {
+                        request.addOption("--no-playlist")
+                        request.addOption("-x")
+                        request.addOption("--audio-format", prefs.getString("audio_format", "mp3") ?: "mp3")
+                        request.addOption("--audio-quality", "0")
+                        if (prefs.getBoolean("embed_metadata", true)) request.addOption("--add-metadata")
+                    } else {
+                        request.addOption("--no-playlist")
+                        val format = if (height > 0) {
+                            "bestvideo[height<=§{height}]+bestaudio/best[height<=§{height}]/best"
+                        } else "bestvideo+bestaudio/best"
+                        request.addOption("-f", format)
+                    }
+
+                    if (subtitles || prefs.getBoolean("subtitles", false)) {
+                        request.addOption("--write-subs").addOption("--write-auto-subs")
+                            .addOption("--sub-langs", "all,-live_chat")
+                    }
+                    if (thumbnail || prefs.getBoolean("thumbnail", false)) request.addOption("--write-thumbnail")
+                    YoutubeDL.execute(request, PROCESS_ID, false) { percent, etaSeconds, line ->
+                        val safePercent = percent.coerceIn(0f, 100f)
+                        val readable = line.take(180).ifBlank { "İndiriliyor…" }
+                        updateProgressNotification(readable, safePercent, etaSeconds)
+                        sendEvent("progress", readable, safePercent)
+                    }
+                }
             }
-            val downloadedFiles = workDir.listFiles()
-                ?.filter { it.isFile && !it.name.endsWith(".part") &&
+
+            val downloadedFiles = tempDir.walkTopDown()
+                .filter { it.isFile && !it.name.endsWith(".part") &&
                     !it.name.endsWith(".ytdl") && !it.name.startsWith(".") }
-                ?.sortedBy { it.name }.orEmpty()
-            if (downloadedFiles.isEmpty()) throw IllegalStateException("İndirilen dosya bulunamadı.")
-            downloadedFiles.forEach { saveToDownloads(it) }
+                .sortedBy { it.name }
+                .toList()
+            if (downloadedFiles.isEmpty()) {
+                throw IllegalStateException("İndirilen dosya bulunamadı.")
+            }
+
+            downloadedFiles.forEach { file -> saveToDownloads(file) }
             val history = getSharedPreferences("cepindir_history", MODE_PRIVATE)
             val previous = history.getStringSet("items", emptySet()).orEmpty().toMutableSet()
             downloadedFiles.forEach { file ->
-                previous.add("${System.currentTimeMillis()}|${file.name}")
+                previous.add("§{System.currentTimeMillis()}|§{file.name}")
             }
             history.edit().putStringSet("items", previous.toList().takeLast(100).toSet()).apply()
             val summary = if (downloadedFiles.size == 1) {
-                "İndirme tamamlandı: ${downloadedFiles.first().name}"
-            } else "İndirme tamamlandı: ${downloadedFiles.size} dosya İndirilenler/CepIndir klasörüne kaydedildi."
+                "İndirme tamamlandı: " + downloadedFiles.first().name
+            } else "İndirme tamamlandı: " + downloadedFiles.size + " dosya İndirilenler/CepIndir klasörüne kaydedildi."
             postFinishedNotification(summary)
-            sendEvent("complete", "İndirme tamamlandı. Dosyalar İndirilenler/CepIndir klasörüne kaydedildi.", 100f)
+            sendEvent(
+                "complete",
+                "İndirme tamamlandı. " + downloadedFiles.size + " dosya İndirilenler/CepIndir klasörüne kaydedildi.",
+                100f
+            )
         } catch (e: Exception) {
             val error = e.message?.lineSequence()?.firstOrNull()?.take(180) ?: "İndirme başarısız oldu."
-            postFinishedNotification("İndirme tamamlanamadı: $error")
-            sendEvent("error", "İndirme başarısız: $error", 0f)
+            postFinishedNotification("İndirme tamamlanamadı: " + error)
+            sendEvent("error", "İndirme başarısız: " + error, 0f)
         } finally {
             workDir?.deleteRecursively()
             running.set(false)
