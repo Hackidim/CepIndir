@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 
 private val SettingsBg = androidx.compose.ui.graphics.Color(0xFF090912)
 private val SettingsPanel = androidx.compose.ui.graphics.Color(0xFF171525)
-private val SettingsPurple = androidx.compose.ui.graphics.Color(0xFF9B72FF)
+private val SettingsPurple = androidx.compose.ui.graphics.Color(0xFF39D6B0)
 
 @OptIn(ExperimentalMaterial3Api::class)
 class SettingsActivity : ComponentActivity() {
