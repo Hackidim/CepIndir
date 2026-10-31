@@ -174,6 +174,20 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (isAnalyzing || isDownloading) return
+
+        // A direct .jpg/.png/.webp URL is already a downloadable image.
+        if (DirectImageDownloader.isDirectImageUrl(url)) {
+            mediaTitle = "Doğrudan görsel bağlantısı"
+            platformName = Uri.parse(url).host ?: "Görsel dosyası"
+            resolutions = emptyList()
+            selectedHeight = 0
+            audioOnly = false
+            imagePost = true
+            analysisReady = true
+            status = "Görsel bağlantısı hazır. İndirebilirsin."
+            return
+        }
+
         isAnalyzing = true
         analysisReady = false
         mediaTitle = ""
@@ -191,34 +205,67 @@ class MainActivity : ComponentActivity() {
                     request.addOption("--no-playlist")
                     request.addOption("--no-warnings")
                     request.addOption("--cache-dir", File(cacheDir, "yt-dlp-cache").absolutePath)
-                    request.addOption("--extractor-retries", "1")
-                    request.addOption("--socket-timeout", "12")
+                    request.addOption("--extractor-retries", "2")
+                    request.addOption("--socket-timeout", "20")
                     YoutubeDL.getInfo(request)
                 }
-                mediaTitle = info.title?.takeIf { it.isNotBlank() } ?: "Başlık alınamadı"
-                platformName = info.extractorKey ?: info.extractor ?: "Medya kaynağı"
                 val availableFormats = info.formats.orEmpty()
                 val hasVideoStream = availableFormats.any {
                     !it.vcodec.isNullOrBlank() && it.vcodec != "none"
                 }
+
+                // yt-dlp may reject photo-only Instagram posts. In that case, inspect
+                // the public post page with the native Instagram photo extractor.
+                val instagramPhotos = if (InstagramPhotoDownloader.isPostUrl(url) && !hasVideoStream) {
+                    runCatching {
+                        withContext(Dispatchers.IO) { InstagramPhotoDownloader.photoCount(url) }
+                    }.getOrDefault(0)
+                } else 0
+
+                mediaTitle = if (instagramPhotos > 0) {
+                    "Instagram gönderisi (" + instagramPhotos + " fotoğraf)"
+                } else info.title?.takeIf { it.isNotBlank() } ?: "Başlık alınamadı"
+                platformName = if (instagramPhotos > 0) {
+                    "Instagram"
+                } else info.extractorKey ?: info.extractor ?: "Medya kaynağı"
+
                 val hasImageCandidates = info.thumbnails.orEmpty().isNotEmpty()
-                imagePost = info.ext?.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "avif") ||
+                imagePost = instagramPhotos > 0 ||
+                    info.ext?.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "avif") ||
                     (!hasVideoStream && hasImageCandidates)
-                resolutions = info.formats.orEmpty()
+                resolutions = availableFormats
                     .filter { !it.vcodec.isNullOrBlank() && it.vcodec != "none" && it.height > 0 }
                     .map { it.height }.distinct().sortedDescending()
                 selectedHeight = 0
                 analysisReady = true
-                status = if (resolutions.isEmpty()) {
+                status = if (imagePost) {
+                    "Fotoğraf gönderisi hazır. Görsel(ler) orijinal dosya olarak indirilecek."
+                } else if (resolutions.isEmpty()) {
                     "Bağlantı çözümlendi. Otomatik kaliteyi deneyebilirsin."
                 } else {
                     "Bağlantı hazır. İndirme kalitesini seçebilirsin."
                 }
             } catch (e: Exception) {
-                val reason = e.message?.lineSequence()?.firstOrNull()?.take(160)
-                    ?: "Kaynak desteklenmiyor veya erişim engellendi."
-                status = "Bağlantı çözümlenemedi: $reason"
-                analysisReady = false
+                val instagramPhotos = if (InstagramPhotoDownloader.isPostUrl(url)) {
+                    runCatching {
+                        withContext(Dispatchers.IO) { InstagramPhotoDownloader.photoCount(url) }
+                    }.getOrDefault(0)
+                } else 0
+
+                if (instagramPhotos > 0) {
+                    mediaTitle = "Instagram gönderisi (" + instagramPhotos + " fotoğraf)"
+                    platformName = "Instagram"
+                    resolutions = emptyList()
+                    selectedHeight = 0
+                    imagePost = true
+                    analysisReady = true
+                    status = "Fotoğraf gönderisi hazır. Görseller indirilebilir."
+                } else {
+                    val reason = e.message?.lineSequence()?.firstOrNull()?.take(160)
+                        ?: "Kaynak desteklenmiyor veya erişim engellendi."
+                    status = "Bağlantı çözümlenemedi: " + reason
+                    analysisReady = false
+                }
             } finally {
                 isAnalyzing = false
             }
