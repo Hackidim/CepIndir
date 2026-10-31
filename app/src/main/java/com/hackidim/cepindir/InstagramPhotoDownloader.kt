@@ -16,7 +16,7 @@ import java.util.Locale
 
 internal object InstagramPhotoDownloader {
     private val postPattern = Regex(
-        """(?:instagram\.com|instagr\.am)/(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)""",
+        """(?:instagram\.com|instagr\.am)/(p|reel|reels|tv)/([A-Za-z0-9_-]+)""",
         RegexOption.IGNORE_CASE
     )
     private val scriptPattern = Regex(
@@ -28,7 +28,7 @@ internal object InstagramPhotoDownloader {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 " +
             "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
-    private data class PostRef(val shortcode: String)
+    private data class PostRef(val route: String, val shortcode: String)
 
     fun isPostUrl(url: String): Boolean = postPattern.containsMatchIn(url)
 
@@ -57,14 +57,14 @@ internal object InstagramPhotoDownloader {
     private fun extractPostRef(url: String): PostRef {
         val match = postPattern.find(url)
             ?: throw IllegalArgumentException("Geçerli bir Instagram gönderi bağlantısı değil.")
-        return PostRef(match.groupValues[1].take(11))
+        return PostRef(match.groupValues[1], match.groupValues[2].take(11))
     }
 
     private fun extractPhotoUrls(url: String): List<String> {
         val ref = extractPostRef(url)
         val expectedId = shortcodeToMediaId(ref.shortcode)
         val page = fetchText(
-            "https://www.instagram.com/p/" + ref.shortcode + "/",
+            "https://www.instagram.com/" + ref.route + "/" + ref.shortcode + "/",
             PAGE_USER_AGENT,
             "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         )
