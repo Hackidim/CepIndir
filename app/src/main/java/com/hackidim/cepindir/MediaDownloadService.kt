@@ -122,9 +122,9 @@ class MediaDownloadService : Service() {
                         .addOption("--no-mtime").addOption("--no-warnings")
                         .addOption("--newline").addOption("-o", outputTemplate)
                         .addOption("--cache-dir", File(filesDir, "yt-dlp-cache").absolutePath)
-                        .addOption("--extractor-retries", "2")
-                        .addOption("--socket-timeout", "20")
-                        .addOption("--retries", "3")
+                        .addOption("--extractor-retries", prefs.getInt("retries", 2).coerceIn(0, 10).toString())
+                        .addOption("--socket-timeout", prefs.getInt("timeout", 20).coerceIn(5, 120).toString())
+                        .addOption("--retries", prefs.getInt("retries", 2).coerceIn(0, 10).toString())
 
                     if (image) {
                         if (prefs.getBoolean("playlist", false)) request.addOption("--yes-playlist")
