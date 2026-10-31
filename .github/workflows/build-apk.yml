@@ -34,26 +34,12 @@ jobs:
           path: ~/.android/debug.keystore
           key: cepindir-android-debug-signing-v1
 
-      - name: Create stable signing key on first build only
+      - name: Fail safely if the established signing key is missing
         if: steps.signing-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p "$HOME/.android"
-          keytool -genkeypair -v \
-            -keystore "$HOME/.android/debug.keystore" \
-            -storetype JKS \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=CepIndir Android,O=Hackidim,C=TR"
-          chmod 600 "$HOME/.android/debug.keystore"
-
-      - name: Save stable signing key
-        if: steps.signing-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: cepindir-android-debug-signing-v1
+          echo "The established CepIndir signing key was not restored."
+          echo "Refusing to generate a replacement key, because that would break app updates."
+          exit 1
 
       - name: Verify signing key is available
         run: |
