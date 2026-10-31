@@ -342,210 +342,171 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun CepIndirScreen(
-    initial: String,
-    isAnalyzing: Boolean,
-    isDownloading: Boolean,
-    progress: Float,
-    status: String,
-    mediaTitle: String,
-    platformName: String,
-    resolutions: List<Int>,
-    selectedHeight: Int,
-    selectedFps: Int,
-    audioOnly: Boolean,
-    imagePost: Boolean,
-    analysisReady: Boolean,
-    onAnalyze: (String) -> Unit,
-    onDownload: (String) -> Unit,
-    onPaste: () -> String,
-    onOpenDownloads: () -> Unit,
-    onHeightChange: (Int, Int) -> Unit,
-    onAudioOnlyChange: (Boolean) -> Unit,
-    onUpdateEngine: () -> Unit,
-    onOpenSettings: () -> Unit
+    initial: String, isAnalyzing: Boolean, isDownloading: Boolean, progress: Float, status: String,
+    mediaTitle: String, platformName: String, resolutions: List<Int>, selectedHeight: Int, selectedFps: Int,
+    audioOnly: Boolean, imagePost: Boolean, analysisReady: Boolean,
+    onAnalyze: (String) -> Unit, onDownload: (String) -> Unit, onPaste: () -> String,
+    onOpenDownloads: () -> Unit, onHeightChange: (Int, Int) -> Unit,
+    onAudioOnlyChange: (Boolean) -> Unit, onUpdateEngine: () -> Unit, onOpenSettings: () -> Unit
 ) {
     var link by remember { mutableStateOf(initial) }
     var qualityMenuExpanded by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var showLegalInfo by remember { mutableStateOf(false) }
     LaunchedEffect(initial) { if (initial.isNotBlank()) link = initial }
 
+    val bg = Color(0xFF080B12)
+    val panel = Color(0xFF121A27)
+    val panelAlt = Color(0xFF192536)
+    val accent = Color(0xFF39D6B0)
+    val muted = Color(0xFF9BAABD)
+    val qualities = listOf(
+        Triple("Otomatik • En iyi kalite", 0, 0), Triple("144p", 144, 0),
+        Triple("240p", 240, 0), Triple("360p", 360, 0), Triple("480p", 480, 0),
+        Triple("720p60fps", 720, 60), Triple("1080p60fps", 1080, 60),
+        Triple("1440p60fps", 1440, 60), Triple("2160p • 4K60fps", 2160, 60)
+    )
+    val selectedQuality = qualities.firstOrNull { it.second == selectedHeight && it.third == selectedFps }
+        ?.first ?: if (selectedHeight > 0) selectedHeight.toString() + "p" else "Otomatik • En iyi kalite"
+
     MaterialTheme(colorScheme = darkColorScheme(
-        primary = Purple, background = Ink, surface = Panel,
-        onBackground = Color.White, onSurface = Color.White
+        primary = accent, secondary = Color(0xFF79A8FF), background = bg, surface = panel,
+        onBackground = Color(0xFFF4F7FA), onSurface = Color(0xFFF4F7FA)
     )) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF211638), Ink)))) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Cepİndir", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                Text("Sosyal medya bağlantılarından video ve ses indir", color = Muted, fontSize = 13.sp)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "YouTube • Instagram • Facebook • TikTok • X • Reddit • Pinterest ve daha fazlası",
-                    color = Gold, fontSize = 11.sp
-                )
-                Spacer(Modifier.height(24.dp))
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel),
-                    shape = RoundedCornerShape(24.dp)) {
-                    Column(Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Link, contentDescription = null, tint = Purple)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Bağlantı", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(Modifier.weight(1f))
-                            IconButton(onClick = { link = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Temizle", tint = Muted)
-                            }
+        Scaffold(
+            containerColor = bg,
+            bottomBar = {
+                NavigationBar(containerColor = Color(0xFF101722), contentColor = accent) {
+                    NavigationBarItem(selectedTab == 0, { selectedTab = 0 }, icon = { Icon(Icons.Default.Download, null) }, label = { Text("İndir") })
+                    NavigationBarItem(selectedTab == 1, { selectedTab = 1 }, icon = { Icon(Icons.Default.FolderOpen, null) }, label = { Text("Dosyalar") })
+                    NavigationBarItem(selectedTab == 2, { selectedTab = 2; onOpenSettings() }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Ayarlar") })
+                }
+            }
+        ) { insets ->
+            when (selectedTab) {
+                0 -> Column(
+                    Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(48.dp).background(Brush.linearGradient(listOf(accent, Color(0xFF2475A8))), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Download, null, tint = bg, modifier = Modifier.size(27.dp))
                         }
-                        OutlinedTextField(
-                            value = link, onValueChange = { link = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Sosyal medya gönderi bağlantısını yapıştır") },
-                            minLines = 3, shape = RoundedCornerShape(16.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = { onPaste().let { if (it.isNotBlank()) link = it } },
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Icon(Icons.Default.ContentPaste, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Panodan bağlantı yapıştır")
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Cepİndir", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("Medya indirmenin kolay yolu", color = muted, fontSize = 12.sp)
                         }
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { onAnalyze(link) }, modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(15.dp),
-                            enabled = link.isNotBlank() && !isAnalyzing && !isDownloading
-                        ) {
-                            if (isAnalyzing) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
-                                Spacer(Modifier.width(10.dp))
-                            } else {
-                                Icon(Icons.Default.Link, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                            }
-                            Text("Bağlantıyı analiz et", fontWeight = FontWeight.Bold)
+                        Surface(color = Color(0xFF12352F), shape = RoundedCornerShape(50)) {
+                            Text("MEDIA", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                     }
-                }
-
-                if (analysisReady) {
-                    Spacer(Modifier.height(14.dp))
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel),
-                        shape = RoundedCornerShape(20.dp)) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("Medya bulundu", color = Purple, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(5.dp))
-                            Text(mediaTitle, color = Color.White, fontWeight = FontWeight.SemiBold)
-                            Text(platformName, color = Muted, fontSize = 12.sp)
-                            Spacer(Modifier.height(16.dp))
-                            Text("İndirme türü", fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.height(7.dp))
-                            if (imagePost) {
-                                Text("Fotoğraf gönderisi algılandı. Görsel(ler) orijinal dosya olarak indirilecek.", color = Gold, fontSize = 12.sp)
-                            } else {
+                    Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF263648))) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Yeni indirme", style = MaterialTheme.typography.titleLarge)
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.Link, null, tint = accent)
+                            }
+                            OutlinedTextField(
+                                value = link, onValueChange = { link = it }, modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("Video veya gönderi bağlantısını yapıştır") }, minLines = 3,
+                                shape = RoundedCornerShape(16.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent, unfocusedBorderColor = Color(0xFF344357), focusedContainerColor = panelAlt, unfocusedContainerColor = panelAlt)
+                            )
+                            OutlinedButton(onClick = { onPaste().let { if (it.isNotBlank()) link = it } }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                                Icon(Icons.Default.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text("Panodan yapıştır")
+                            }
+                            Button(onClick = { onAnalyze(link) }, modifier = Modifier.fillMaxWidth().height(54.dp), enabled = link.isNotBlank() && !isAnalyzing && !isDownloading, shape = RoundedCornerShape(15.dp)) {
+                                if (isAnalyzing) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp) else Icon(Icons.Default.Search, null)
+                                Spacer(Modifier.width(9.dp)); Text(if (isAnalyzing) "Bağlantı analiz ediliyor" else "Bağlantıyı analiz et", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    if (analysisReady) Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF263648))) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(color = Color(0xFF12352F), shape = RoundedCornerShape(50)) {
+                                    Text("MEDYA HAZIR", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(Modifier.weight(1f)); Text(platformName, color = muted, fontSize = 12.sp)
+                            }
+                            Text(mediaTitle, style = MaterialTheme.typography.titleMedium)
+                            if (imagePost) Text("Fotoğraflar orijinal dosya olarak indirilecek.", color = accent, fontSize = 13.sp)
+                            else {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilterChip(selected = !audioOnly, onClick = { onAudioOnlyChange(false) }, label = { Text("Video") })
                                     FilterChip(selected = audioOnly, onClick = { onAudioOnlyChange(true) }, label = { Text("MP3 ses") })
                                 }
-                            }
-                            if (!audioOnly && !imagePost) {
-                                Spacer(Modifier.height(12.dp))
-                                Text("Video kalitesi", fontWeight = FontWeight.SemiBold)
-                                Spacer(Modifier.height(7.dp))
-                                Box {
-                                    OutlinedButton(onClick = { qualityMenuExpanded = true }) {
-                                        Text(if (selectedHeight == 0) "En iyi kalite (otomatik)" else "${selectedHeight}p")
-                                    }
-                                    DropdownMenu(expanded = qualityMenuExpanded,
-                                        onDismissRequest = { qualityMenuExpanded = false }) {
-                                        DropdownMenuItem(text = { Text("En iyi kalite (otomatik)") }, onClick = {
-                                            onHeightChange(0); qualityMenuExpanded = false
-                                        })
-                                        resolutions.forEach { height ->
-                                            DropdownMenuItem(text = { Text("${height}p") }, onClick = {
-                                                onHeightChange(height); qualityMenuExpanded = false
-                                            })
+                                if (!audioOnly) {
+                                    Text("Video kalitesi", color = muted, fontSize = 12.sp)
+                                    Box {
+                                        OutlinedButton(onClick = { qualityMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(13.dp)) {
+                                            Text(selectedQuality, modifier = Modifier.weight(1f)); Icon(Icons.Default.ExpandMore, null)
+                                        }
+                                        DropdownMenu(expanded = qualityMenuExpanded, onDismissRequest = { qualityMenuExpanded = false }, modifier = Modifier.background(panelAlt)) {
+                                            qualities.forEach { q ->
+                                                DropdownMenuItem(
+                                                    text = { Text(q.first) },
+                                                    onClick = { onHeightChange(q.second, q.third); qualityMenuExpanded = false }
+                                                )
+                                            }
                                         }
                                     }
+                                    Text("Seçilen kalite, kaynak videonun desteklediği uygun akışa göre indirilir.", color = muted, fontSize = 11.sp)
                                 }
                             }
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = { onDownload(link) },
-                                modifier = Modifier.fillMaxWidth().height(54.dp),
-                                shape = RoundedCornerShape(16.dp), enabled = !isDownloading && !isAnalyzing) {
-                                Icon(Icons.Default.Download, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (imagePost) "Fotoğraf(ları) indir" else "İndirmeyi başlat", fontWeight = FontWeight.Bold)
+                            Button(onClick = { onDownload(link) }, modifier = Modifier.fillMaxWidth().height(54.dp), enabled = !isDownloading && !isAnalyzing, shape = RoundedCornerShape(15.dp)) {
+                                Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp)); Text(if (imagePost) "Fotoğrafları indir" else "İndirmeyi başlat", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                    Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(20.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("İndirme durumu", fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f))
+                                if (isDownloading) Text("§{progress.toInt()}%", color = accent, fontWeight = FontWeight.Bold)
+                            }
+                            Text(status, color = muted, fontSize = 12.sp)
+                            if (isDownloading) LinearProgressIndicator(progress = { (progress / 100f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = accent, trackColor = panelAlt)
+                        }
+                    }
+                    Text("YouTube • Instagram • Facebook • TikTok • X • Reddit • Pinterest ve daha fazlası", color = muted, fontSize = 11.sp)
+                    TextButton(onClick = { showLegalInfo = true }) { Text("Hakkında ve açık kaynak lisansları", color = muted) }
                 }
-
-                Spacer(Modifier.height(14.dp))
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF11101B)),
-                    shape = RoundedCornerShape(18.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("İndirme durumu", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(6.dp))
-                        Text(status, color = Muted, fontSize = 12.sp)
-                        if (isDownloading) {
-                            Spacer(Modifier.height(12.dp))
-                            LinearProgressIndicator(
-                                progress = { (progress / 100f).coerceIn(0f, 1f) },
-                                modifier = Modifier.fillMaxWidth(), color = Purple
-                            )
-                            Text("${progress.toInt()}%", color = Purple, fontSize = 12.sp)
+                1 -> Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Dosyalarım", style = MaterialTheme.typography.headlineLarge)
+                    Text("İndirdiğin içeriklere buradan ulaş.", color = muted)
+                    Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Default.FolderOpen, null, tint = accent, modifier = Modifier.size(36.dp))
+                            Text("İndirilenler / CepIndir", style = MaterialTheme.typography.titleLarge)
+                            Text("Tamamlanan video, ses ve fotoğraf dosyalarını Android İndirilenler klasöründe bulabilirsin.", color = muted)
+                            Button(onClick = onOpenDownloads, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text("İndirilenleri aç") }
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = onOpenDownloads, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(15.dp)) {
-                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("İndirmelerimi aç")
-                }
-                OutlinedButton(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Gelişmiş ayarlar")
-                }
-                TextButton(onClick = onUpdateEngine, enabled = !isAnalyzing && !isDownloading) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Muted)
-                    Spacer(Modifier.width(6.dp))
-                    Text("İndirme motorunu güncelle", color = Muted)
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Yalnızca erişebildiğin ve indirme hakkına sahip olduğun içerikleri indir. Özel hesaplar, giriş gerektiren içerikler ve DRM koruması desteklenmez. Platform değişiklikleri nedeniyle bazı bağlantılar geçici olarak çalışmayabilir.",
-                    color = Muted, fontSize = 11.sp
-                )
-                TextButton(onClick = { showLegalInfo = true }) {
-                    Text("Hakkında ve açık kaynak lisansları", color = Muted)
-                }
-                if (showLegalInfo) {
-                    AlertDialog(
-                        onDismissRequest = { showLegalInfo = false },
-                        title = { Text("Cepİndir • Açık kaynak") },
-                        text = {
-                            Text(
-                                "Cepİndir'in kaynak kodu GPL-3.0 lisansı koşullarıyla yayımlanır. " +
-                                "Kaynak kod: github.com/Hackidim/CepIndir. " +
-                                "Üçüncü taraf bileşenler ve lisansları THIRD_PARTY_NOTICES.md dosyasında açıklanır. " +
-                                "Bu yazılım, yasaların izin verdiği ölçüde, hiçbir açık veya zımni garanti olmaksızın olduğu gibi sunulur."
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { showLegalInfo = false }) { Text("Kapat") }
+                else -> Column(Modifier.fillMaxSize().padding(insets).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Ayarlar", style = MaterialTheme.typography.headlineLarge)
+                    Text("İndirme tercihlerini ve uygulama seçeneklerini yönet.", color = muted)
+                    Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("İndirme ayarları", style = MaterialTheme.typography.titleLarge)
+                            Text("Ses formatı, altyazı, küçük resim, oynatma listesi ve bağlantı ayarları.", color = muted)
+                            Button(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth()) { Text("Ayrıntılı ayarları aç") }
                         }
-                    )
+                    }
+                    Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("İndirme motoru", style = MaterialTheme.typography.titleLarge)
+                            Text("yt-dlp motorunu güncel tut. Güncelleme sırasında uygulamayı kapatma.", color = muted)
+                            OutlinedButton(onClick = onUpdateEngine, enabled = !isAnalyzing && !isDownloading, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("İndirme motorunu güncelle")
+                            }
+                        }
+                    }
+                    Text("Cepİndir • v1.4.0", color = muted, fontSize = 12.sp)
                 }
-                Spacer(Modifier.height(18.dp))
             }
         }
     }
