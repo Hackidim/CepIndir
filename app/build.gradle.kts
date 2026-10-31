@@ -1,9 +1,29 @@
+import java.io.File
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+val ciSigningKeystore = File(System.getProperty("user.home"), ".android/debug.keystore")
+
 android {
+    signingConfigs {
+        create("ciStable") {
+            storeFile = ciSigningKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            // GitHub Actions restores this key before Gradle starts. Local builds
+            // keep the Android Gradle Plugin's normal debug-key fallback.
+            if (ciSigningKeystore.isFile) {
+                signingConfig = signingConfigs.getByName("ciStable")
+            }
+        }
+    }
     namespace = "com.hackidim.cepindir"
     compileSdk = 35
     defaultConfig {
