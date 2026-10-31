@@ -140,7 +140,7 @@ class MediaDownloadService : Service() {
                     } else {
                         request.addOption("--no-playlist")
                         val format = if (height > 0) {
-                            "bestvideo[height<=§{height}]+bestaudio/best[height<=§{height}]/best"
+                            "bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best"
                         } else "bestvideo+bestaudio/best"
                         request.addOption("-f", format)
                     }
@@ -172,7 +172,7 @@ class MediaDownloadService : Service() {
             val history = getSharedPreferences("cepindir_history", MODE_PRIVATE)
             val previous = history.getStringSet("items", emptySet()).orEmpty().toMutableSet()
             downloadedFiles.forEach { file ->
-                previous.add("§{System.currentTimeMillis()}|§{file.name}")
+                previous.add("${System.currentTimeMillis()}|${file.name}")
             }
             history.edit().putStringSet("items", previous.toList().takeLast(100).toSet()).apply()
             val summary = if (downloadedFiles.size == 1) {
