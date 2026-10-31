@@ -34,6 +34,7 @@ class MediaDownloadService : Service() {
         const val ACTION_EVENT = "com.hackidim.cepindir.DOWNLOAD_EVENT"
         const val EXTRA_URL = "url"
         const val EXTRA_HEIGHT = "height"
+        const val EXTRA_FPS = "fps"
         const val EXTRA_AUDIO_ONLY = "audio_only"
         const val EXTRA_SUBTITLES = "subtitles"
         const val EXTRA_THUMBNAIL = "thumbnail"
@@ -74,18 +75,19 @@ class MediaDownloadService : Service() {
                 }
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
                 val height = intent.getIntExtra(EXTRA_HEIGHT, 0)
+                val fps = intent.getIntExtra(EXTRA_FPS, 0)
                 val audioOnly = intent.getBooleanExtra(EXTRA_AUDIO_ONLY, false)
                 val subtitles = intent.getBooleanExtra(EXTRA_SUBTITLES, false)
                 val thumbnail = intent.getBooleanExtra(EXTRA_THUMBNAIL, false)
                 val image = intent.getBooleanExtra(EXTRA_IMAGE, false)
                 startAsForeground("Bağlantı hazırlanıyor…", 0)
-                executor.execute { performDownload(url, height, audioOnly, subtitles, thumbnail, image, startId) }
+                executor.execute { performDownload(url, height, fps, audioOnly, subtitles, thumbnail, image, startId) }
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun performDownload(url: String, height: Int, audioOnly: Boolean, subtitles: Boolean,
+    private fun performDownload(url: String, height: Int, fps: Int, audioOnly: Boolean, subtitles: Boolean,
         thumbnail: Boolean, image: Boolean, startId: Int) {
         var workDir: File? = null
         try {
@@ -139,8 +141,9 @@ class MediaDownloadService : Service() {
                         if (prefs.getBoolean("embed_metadata", true)) request.addOption("--add-metadata")
                     } else {
                         request.addOption("--no-playlist")
+                        val fpsFilter = if (fps > 0) "[fps<=\${fps}]" else ""
                         val format = if (height > 0) {
-                            "bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best"
+                            "bestvideo[height<=\${height}]\${fpsFilter}+bestaudio/best[height<=\${height}]\${fpsFilter}/best"
                         } else "bestvideo+bestaudio/best"
                         request.addOption("-f", format)
                     }
